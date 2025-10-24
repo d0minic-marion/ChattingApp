@@ -4,7 +4,7 @@ import { storage, db } from "../firebase";
 import { updateProfile } from "firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
 import { useState } from "react";
-import Swal from "sweetalert2"; // 🧩 import SweetAlert2
+import Swal from "sweetalert2"; 
 
 export default function Profile() {
   const { user } = useAuth();
@@ -21,7 +21,6 @@ export default function Profile() {
       return;
     }
 
-    // 🧡 Beau pop-up de confirmation
     const result = await Swal.fire({
       title: "Mettre à jour la photo de profil ?",
       text: "Votre ancienne photo sera remplacée.",

@@ -42,11 +42,31 @@ export default function AuthProvider({ children }) {
               lastSeen: serverTimestamp(),
             });
           } catch {}
+
+          try {
+            await signOut(auth);
+          } catch (e) {
+            console.warn("Erreur signOut:", e);
+          }
+
+        
+          try {
+            localStorage.clear();
+            sessionStorage.clear();
+            indexedDB.databases &&
+              indexedDB.databases().then((dbs) =>
+                dbs.forEach((db) => indexedDB.deleteDatabase(db.name))
+              );
+          } catch (err) {
+            console.warn("Erreur nettoyage cache:", err);
+          }
         };
+
         const handleVisibility = async () => {
           try {
             await updateDoc(doc(db, "users", u.uid), {
-              status: document.visibilityState === "visible" ? "online" : "away",
+              status:
+                document.visibilityState === "visible" ? "online" : "away",
               lastSeen: serverTimestamp(),
             });
           } catch {}
@@ -65,12 +85,21 @@ export default function AuthProvider({ children }) {
     return () => unsub();
   }, []);
 
-  const logout = () => signOut(auth);
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      localStorage.clear();
+      sessionStorage.clear();
+      if (indexedDB.databases) {
+        const dbs = await indexedDB.databases();
+        dbs.forEach((db) => indexedDB.deleteDatabase(db.name));
+      }
+    } catch (e) {
+      console.warn("Erreur lors de la déconnexion:", e);
+    }
+  };
 
-  const value = useMemo(
-    () => ({ user, loading, logout }),
-    [user, loading]
-  );
+  const value = useMemo(() => ({ user, loading, logout }), [user, loading]);
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }

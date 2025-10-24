@@ -1,9 +1,12 @@
 import { useAuth } from "../auth/AuthContext";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage, db } from "../firebase";
-import { updateProfile } from "firebase/auth";
+import { /* deleteUser, getAuth,*/ updateProfile } from "firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+
 import Swal from "sweetalert2"; 
 
 export default function Profile() {
@@ -11,6 +14,10 @@ export default function Profile() {
   const [displayName, setDisplayName] = useState(user.displayName || "");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+//  const [deleting, setDeleting] = useState(false);
+  
+  //const auth = getAuth()
+  const navigate = useNavigate()
 
   const onFile = async (e) => {
     const file = e.target.files?.[0];
@@ -69,6 +76,7 @@ export default function Profile() {
       await updateProfile(user, { displayName });
       await updateDoc(doc(db, "users", user.uid), { displayName });
       Swal.fire("✅ Profil mis à jour", "Vos informations ont été enregistrées.", "success");
+      navigate("/")
     } catch (err) {
       console.error(err);
       Swal.fire("❌ Erreur", err.message, "error");
@@ -76,6 +84,48 @@ export default function Profile() {
       setSaving(false);
     }
   };
+/*
+const deleteAccount = async (e) => {
+  e.preventDefault();
+  setDeleting(true);
+
+  try {
+    const result = await Swal.fire({
+      title: "Supprimer le compte ?",
+      text: "Cette action est irréversible.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Oui, supprimer",
+      cancelButtonText: "Annuler",
+      confirmButtonColor: "#d33",
+    });
+
+    if (!result.isConfirmed) {
+      setDeleting(false);
+      return;
+    }
+
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error("Aucun utilisateur connecté.");
+
+
+    await deleteUser(currentUser);
+
+
+    await Swal.fire("✅ Compte supprimé", "Votre compte a été supprimé avec succès.", "success");
+
+    navigate("/login");
+  } catch (error) {
+    Swal.fire("❌ Erreur", error.message, "error");
+    console.error("Erreur suppression :", error);
+  } finally {
+    setDeleting(false);
+  }
+};
+
+
+*/
+
 
   return (
     <div className="card">
@@ -102,9 +152,23 @@ export default function Profile() {
           onChange={(e) => setDisplayName(e.target.value)}
           placeholder="Entrez votre pseudonyme"
         />
-        <button className="btn" disabled={saving}>
+        {/*
+        
+        <button 
+          className="btn bg-red-600"
+         // onClick={deleteAccount}
+        //  disabled={deleting}
+        >
+          {deleting ? "Suppression..." : "Supprimer le compte"}
+        </button>
+        
+        */}
+
+
+        <button className="btn" style={{backgroundColor: "red"}} disabled={saving}>
           {saving ? "Enregistrement..." : "Enregistrer"}
         </button>
+
       </form>
 
       <div className="form">

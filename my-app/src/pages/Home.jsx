@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
-import { db } from "../firebase";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import UserList from "../components/UserList";
 
@@ -8,12 +6,6 @@ export default function Home() {
   const [rooms, setRooms] = useState([
     { id: "general", name: "#general" }
   ]);
-
-  // Si tu veux lister les rooms dynamiquement depuis Firestore:
-  // useEffect(() => {
-  //   const q = query(collection(db, "rooms"), orderBy("createdAt","asc"));
-  //   return onSnapshot(q, (snap) => setRooms(snap.docs.map(d => ({ id:d.id, ...d.data() }))));
-  // }, []);
 
   return (
     <div className="grid">

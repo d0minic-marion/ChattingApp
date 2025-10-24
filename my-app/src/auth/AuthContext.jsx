@@ -35,7 +35,8 @@ export default function AuthProvider({ children }) {
           console.error("Profil/presence write failed:", e);
         }
 
-        const handleBeforeUnload = async () => {
+        // ✅ Déconnecte seulement si l’utilisateur quitte le site (pas F5)
+        const handlePageHide = async (event) => {
           try {
             await updateDoc(doc(db, "users", u.uid), {
               status: "offline",
@@ -43,20 +44,27 @@ export default function AuthProvider({ children }) {
             });
           } catch {}
 
+          // On regarde si c’est un vrai départ du site ou juste un reload
+          const navType = performance.getEntriesByType("navigation")[0]?.type;
+          if (navType === "reload") {
+            // 🔁 Juste un F5 → ne rien faire
+            return;
+          }
+
+          // 🚪 Sinon : vraie fermeture ou navigation → déconnexion et clear cache
           try {
             await signOut(auth);
           } catch (e) {
             console.warn("Erreur signOut:", e);
           }
 
-        
           try {
             localStorage.clear();
             sessionStorage.clear();
-            indexedDB.databases &&
-              indexedDB.databases().then((dbs) =>
-                dbs.forEach((db) => indexedDB.deleteDatabase(db.name))
-              );
+            if (indexedDB.databases) {
+              const dbs = await indexedDB.databases();
+              dbs.forEach((db) => indexedDB.deleteDatabase(db.name));
+            }
           } catch (err) {
             console.warn("Erreur nettoyage cache:", err);
           }
@@ -72,11 +80,11 @@ export default function AuthProvider({ children }) {
           } catch {}
         };
 
-        window.addEventListener("beforeunload", handleBeforeUnload);
+        window.addEventListener("pagehide", handlePageHide);
         document.addEventListener("visibilitychange", handleVisibility);
 
         return () => {
-          window.removeEventListener("beforeunload", handleBeforeUnload);
+          window.removeEventListener("pagehide", handlePageHide);
           document.removeEventListener("visibilitychange", handleVisibility);
         };
       }

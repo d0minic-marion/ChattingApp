@@ -35,7 +35,6 @@ function Shell() {
         {user && (
           <>
             <Link to="/room/general" className="navlink">#general</Link>
-            <Link to="/room/random" className="navlink">#random</Link>
             <Link to="/profile" className="navlink">Profil</Link>
             <div className="userpill">
               <PresenceDot uid={user.uid} />

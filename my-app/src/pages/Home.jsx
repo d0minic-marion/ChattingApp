@@ -6,8 +6,7 @@ import UserList from "../components/UserList";
 
 export default function Home() {
   const [rooms, setRooms] = useState([
-    { id: "general", name: "#general" },
-    { id: "random", name: "#random" },
+    { id: "general", name: "#general" }
   ]);
 
   // Si tu veux lister les rooms dynamiquement depuis Firestore:

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import UserList from "../components/UserList";
 
 export default function Home() {
-  const [rooms, setRooms] = useState([
+  const [rooms] = useState([
     { id: "general", name: "#general" }
   ]);
 

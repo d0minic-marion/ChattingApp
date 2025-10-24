@@ -91,3 +91,7 @@
 .auth-note { color: #9fb4ff; margin-top: 10px; }
 
 .auth-recaptcha { margin-top: 8px; min-height: 1px; }
+
+.presence { display:inline-block; border-radius:999px; background:#666; }
+.presence.online { background:#22c55e; }
+.presence.offline{ background:#555; }

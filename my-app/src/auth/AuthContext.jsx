@@ -15,93 +15,62 @@ export default function AuthProvider({ children }) {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u ?? null);
       setLoading(false);
+      cleanupPresence?.();
 
-      if (u) {
-        try {
-          await setDoc(
-            doc(db, "users", u.uid),
-            {
-              displayName: u.displayName || "Anonyme",
-              photoURL: u.photoURL || "",
-              email: u.email || null,
-              phone: u.phoneNumber || null,
-              providers: u.providerData.map((p) => p.providerId),
-              status: "online",
-              lastSeen: serverTimestamp(),
-            },
-            { merge: true }
-          );
-        } catch (e) {
-          console.error("Profil/presence write failed:", e);
-        }
+      if (!u) return;
 
-        // ✅ Déconnecte seulement si l’utilisateur quitte le site (pas F5)
-        const handlePageHide = async (event) => {
-          try {
-            await updateDoc(doc(db, "users", u.uid), {
-              status: "offline",
-              lastSeen: serverTimestamp(),
-            });
-          } catch {}
+      const uref = doc(db, "users", u.uid);
 
-          // On regarde si c’est un vrai départ du site ou juste un reload
-          const navType = performance.getEntriesByType("navigation")[0]?.type;
-          if (navType === "reload") {
-            // 🔁 Juste un F5 → ne rien faire
-            return;
-          }
-
-          // 🚪 Sinon : vraie fermeture ou navigation → déconnexion et clear cache
-          try {
-            await signOut(auth);
-          } catch (e) {
-            console.warn("Erreur signOut:", e);
-          }
-
-          try {
-            localStorage.clear();
-            sessionStorage.clear();
-            if (indexedDB.databases) {
-              const dbs = await indexedDB.databases();
-              dbs.forEach((db) => indexedDB.deleteDatabase(db.name));
-            }
-          } catch (err) {
-            console.warn("Erreur nettoyage cache:", err);
-          }
-        };
-
-        const handleVisibility = async () => {
-          try {
-            await updateDoc(doc(db, "users", u.uid), {
-              status:
-                document.visibilityState === "visible" ? "online" : "away",
-              lastSeen: serverTimestamp(),
-            });
-          } catch {}
-        };
-
-        window.addEventListener("pagehide", handlePageHide);
-        document.addEventListener("visibilitychange", handleVisibility);
-
-        return () => {
-          window.removeEventListener("pagehide", handlePageHide);
-          document.removeEventListener("visibilitychange", handleVisibility);
-        };
+      try {
+        await setDoc(
+          uref,
+          {
+            displayName: u.displayName || "Anonyme",
+            photoURL: u.photoURL || "",
+            email: u.email || null,
+            phone: u.phoneNumber || null,
+            providers: u.providerData.map((p) => p.providerId),
+            lastSeen: serverTimestamp(),
+            intent: "online",
+          },
+          { merge: true }
+        );
+      } catch (e) {
+        console.error("Erreur Firestore:", e);
       }
+
+      const beat = async () => {
+        try {
+          await updateDoc(uref, { lastSeen: serverTimestamp() });
+        } catch {}
+      };
+      const beatId = setInterval(beat, 20_000);
+      beat();
+
+      const onBeforeUnload = async () => {
+        try {
+          await updateDoc(uref, { intent: "offline", lastSeen: serverTimestamp() });
+        } catch {}
+      };
+      window.addEventListener("beforeunload", onBeforeUnload);
+
+      cleanupPresence = () => {
+        clearInterval(beatId);
+        window.removeEventListener("beforeunload", onBeforeUnload);
+      };
     });
 
-    return () => unsub();
+    return () => {
+      cleanupPresence?.();
+      unsub();
+    };
   }, []);
 
   const logout = async () => {
     try {
       await signOut(auth);
-      localStorage.clear();
+      localStorage.removeItem("firebase:previous_websocket_failure");
       sessionStorage.clear();
-      if (indexedDB.databases) {
-        const dbs = await indexedDB.databases();
-        dbs.forEach((db) => indexedDB.deleteDatabase(db.name));
-      }
     } catch (e) {
       console.warn("Erreur lors de la déconnexion:", e);
     }
@@ -111,3 +80,5 @@ export default function AuthProvider({ children }) {
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
+
+let cleanupPresence = null;

@@ -1,0 +1,19 @@
+.inputPAGE{
+    margin-top: 10px;
+    margin-bottom: 10px;
+    width: 450px;
+    align-items: center;
+}
+
+.box{
+    width: 500px;
+    margin: auto;
+    flex: auto;
+    text-align: center;
+    margin-top: 50px;
+}
+
+.btnPAGE{
+    margin-top: 5px;
+    color:rgb(ffffff);
+}

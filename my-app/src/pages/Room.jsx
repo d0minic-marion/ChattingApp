@@ -1,45 +1,88 @@
-import { useParams } from "react-router-dom";
-import { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot } from "firebase/firestore";
-import { useEffect, useState, useCallback } from "react";
-import { db } from "../firebase";
 import { useAuth } from "../auth/AuthContext";
-import MessageList from "../components/MessageList";
-import MessageInput from "../components/MessageInput";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage, db } from "../firebase";
+import { updateProfile } from "firebase/auth";
+import { doc, updateDoc } from "firebase/firestore";
+import { useState } from "react";
 
-export default function Room() {
-  const { roomId } = useParams();
+export default function Profile() {
   const { user } = useAuth();
-  const [msgs, setMsgs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [displayName, setDisplayName] = useState(user.displayName || "");
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
-  useEffect(() => {
-    const q = query(
-      collection(db, "rooms", roomId, "messages"),
-      orderBy("createdAt", "desc"),
-      limit(50)
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      setMsgs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    });
-    return () => unsub();
-  }, [roomId]);
+  const onFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploading(true);
+      const ext = file.type === "image/png" ? "png" : "jpg";
+      const r = ref(storage, `avatars/${user.uid}.${ext}`);
+      await uploadBytes(r, file, { contentType: file.type });
+      const url = await getDownloadURL(r);
 
-  const send = useCallback(async (text) => {
-    await addDoc(collection(db, "rooms", roomId, "messages"), {
-      text,
-      uid: user.uid,
-      displayName: user.displayName || "Anonyme",
-      photoURL: user.photoURL || "",
-      createdAt: serverTimestamp(),
-    });
-  }, [roomId, user]);
+      await updateProfile(user, { photoURL: url });
+      await updateDoc(doc(db, "users", user.uid), { photoURL: url });
+
+      alert("✅ Photo mise à jour avec succès !");
+    } catch (err) {
+      console.error(err);
+      alert("❌ Erreur lors du téléchargement : " + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const onSave = async (e) => {
+    e.preventDefault();
+    if (!displayName.trim()) return alert("Le nom ne peut pas être vide.");
+    setSaving(true);
+    try {
+      await updateProfile(user, { displayName });
+      await updateDoc(doc(db, "users", user.uid), { displayName });
+      alert("✅ Profil mis à jour !");
+    } catch (err) {
+      console.error(err);
+      alert("❌ Erreur : " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <div className="chat">
-      <h2># {roomId}</h2>
-      <MessageList items={msgs} loading={loading} />
-      <MessageInput onSend={send} />
+    <div className="card">
+      <h2>Mon profil</h2>
+      <div className="row">
+        <img
+          src={user.photoURL || "/logo192.png"}
+          alt="Avatar"
+          className="avatar-lg"
+        />
+        <div>
+          <p><strong>UID:</strong> {user.uid}</p>
+          {user.email && <p><strong>Email:</strong> {user.email}</p>}
+          {user.phoneNumber && <p><strong>Téléphone:</strong> {user.phoneNumber}</p>}
+          <p><strong>Fournisseurs:</strong> {user.providerData.map(p => p.providerId).join(", ")}</p>
+        </div>
+      </div>
+
+      <form onSubmit={onSave} className="form">
+        <label>Pseudonyme</label>
+        <input
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          placeholder="Entrez votre pseudonyme"
+        />
+        <button className="btn" disabled={saving}>
+          {saving ? "Enregistrement..." : "Enregistrer"}
+        </button>
+      </form>
+
+      <div className="form">
+        <label>Photo de profil</label>
+        <input type="file" accept="image/*" onChange={onFile} />
+        {uploading && <p>⏳ Téléchargement en cours...</p>}
+      </div>
     </div>
   );
 }

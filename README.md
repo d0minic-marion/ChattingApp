@@ -1,2 +1,0 @@
-# ChattingApp
-Application de communication
